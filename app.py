@@ -1,8 +1,5 @@
 import streamlit as st
 
-st.title("こんにちは、Streamlit！")
-st.write("ついに自分のアプリが動き出しました。")
-
-name = st.text_input("お名前を教えてください")
-if name:
-    st.write(f"こんにちは、{name}さん！")
+st.set_page_config(page_title="在庫管理アプリ", page_icon="📦")
+st.title("在庫管理アプリ")
+st.write("ようこそ！このアプリでは商品の在庫管理ができます。")
