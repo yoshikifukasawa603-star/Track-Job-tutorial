@@ -16,6 +16,8 @@ if st.button("🗺️ 売り場マップ画面へ移動"):
 
 st.divider()
 
+#コメントアウトよ～ん
+
 # 1. セッション状態の準備 (main.py内でのhome/warehouse切り替え)
 if "page" not in st.session_state:
     st.session_state.page = "home"
