@@ -4,42 +4,47 @@ import pandas as pd
 # CSVを読み込む
 df = pd.read_csv("inventory.csv")
 
-# 1. 準備
+# 1. 準備：スイッチのセット
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
 # 2. ホームページの表示
 if st.session_state.page == "home":
-    st.title(" 在庫管理システム")
+    st.title("🏠 在庫管理システム")
 
-    # 売り場アラート
+    # --- 売り場アラート（赤） ---
     low_stock = df[df["売り場在庫"] < 5]
     if not low_stock.empty:
-        st.error(" 【緊急】売り場への補充が必要です！")
+        st.error("🚨 【緊急】売り場への補充が必要です！")
         st.dataframe(low_stock)
-        st.write("補充が必要な標品一覧")
+        
+        st.write("### 補充が必要な商品")
         cols = st.columns(len(low_stock))
-        for i,(index, row) in enumerate(low_stock.iterrows()):
+        for i, (index, row) in enumerate(low_stock.iterrows()):
             with cols[i]:
-                st.image(label=row["商品名"], 
+                # st.image を st.metric に修正
+                st.metric(
+                    label=row["商品名"], 
                     value=f"{row['売り場在庫']}個", 
-                    delta=f"{row['売り場在庫'] - 5}個不足", # 5個に対してあと何個足りないか
-                    delta_color="inverse")
+                    delta=f"{row['売り場在庫'] - 5}個不足", 
+                    delta_color="inverse"
+                )
 
-    # 倉庫アラート
+    # --- 倉庫アラート（黄） ---
     low_stock_wh = df[df["倉庫在庫"] < 10]
     if not low_stock_wh.empty:
-        st.warning("【注意】倉庫在庫が少なくなっています。")
+        st.warning("⚠️ 【注意】倉庫在庫が少なくなっています。")
         st.dataframe(low_stock_wh)
+        
         st.write("### 倉庫の在庫状況（早めの手配を！）")
-        wh_cols = st.columns(len(low_stock_warehouse))
-        for i, (index, row) in enumerate(low_stock_warehouse.iterrows()):
+        wh_cols = st.columns(len(low_stock_wh)) # 変数名を統一
+        for i, (index, row) in enumerate(low_stock_wh.iterrows()):
             with wh_cols[i]:
                 st.metric(
                     label=f"📦 {row['商品名']}", 
                     value=f"{row['倉庫在庫']}個", 
                     delta="補充が必要", 
-                    delta_color="off" # 倉庫は「警告」なので、赤字にせず中立（グレー）にするのも手です
+                    delta_color="off"
                 )
 
     if st.button("倉庫管理ページへ移動"):
@@ -48,13 +53,12 @@ if st.session_state.page == "home":
 
 # 3. 在庫管理ページの表示
 elif st.session_state.page == "warehouse":
-    st.title(" 倉庫管理ページ")
+    st.title("🏭 倉庫管理ページ")
 
-    if st.button(" ホームページへ戻る"):
+    if st.button("🏠 ホームページへ戻る"):
         st.session_state.page = "home"
         st.rerun()
-
-    st.divider()
+        st.divider()
 
     # 操作の選択
     warehouse_mode = st.radio("操作を選択してください", options=["商品検索", "在庫数更新", "新規登録"], horizontal=True)
