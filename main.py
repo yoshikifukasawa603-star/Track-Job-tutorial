@@ -24,13 +24,13 @@ if st.session_state.page == "home":
         st.warning("⚠️ 【注意】倉庫在庫が少なくなっています。納品を確認してください。") # 黄色で表示
         st.dataframe(low_stock_warehouse)
 
-    if st.button("在庫管理ページへ移動"):
+    if st.button("倉庫管理ページへ移動"):
         st.session_state.page = "warehouse"
         st.rerun()
         
    # --- 在庫管理ページの表示 ------------------------------------------------------
-    if st.session_state.page == "warehouse":
-        st.title("在庫管理ページ")
+    elif st.session_state.page == "warehouse":
+        st.title("倉庫管理ページ")
 
         # home backボタン(B-a)
         if st.button("ホームページへ戻る"):
