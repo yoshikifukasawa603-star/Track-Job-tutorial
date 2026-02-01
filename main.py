@@ -10,19 +10,42 @@ if "page" not in st.session_state:
 
 # 2. ホームページの表示
 if st.session_state.page == "home":
-    st.title(" 在庫管理システム")
+    st.title("🏠 在庫管理システム")
 
-    # 売り場アラート
+    # --- 売り場アラート（赤） ---
     low_stock = df[df["売り場在庫"] < 5]
     if not low_stock.empty:
-        st.error(" 【緊急】売り場への補充が必要です！")
+        st.error("🚨 【緊急】売り場への補充が必要です！")
         st.dataframe(low_stock)
+        
+        st.write("### 補充が必要な商品")
+        cols = st.columns(len(low_stock))
+        for i, (index, row) in enumerate(low_stock.iterrows()):
+            with cols[i]:
+                # st.image を st.metric に修正
+                st.metric(
+                    label=row["商品名"], 
+                    value=f"{row['売り場在庫']}個", 
+                    delta=f"{row['売り場在庫'] - 5}個不足", 
+                    delta_color="inverse"
+                )
 
-    # 倉庫アラート
+    # --- 倉庫アラート（黄） ---
     low_stock_wh = df[df["倉庫在庫"] < 10]
     if not low_stock_wh.empty:
-        st.warning("【注意】倉庫在庫が少なくなっています。")
+        st.warning("⚠️ 【注意】倉庫在庫が少なくなっています。")
         st.dataframe(low_stock_wh)
+        
+        st.write("### 倉庫の在庫状況（早めの手配を！）")
+        wh_cols = st.columns(len(low_stock_wh)) # 変数名を統一
+        for i, (index, row) in enumerate(low_stock_wh.iterrows()):
+            with wh_cols[i]:
+                st.metric(
+                    label=f"📦 {row['商品名']}", 
+                    value=f"{row['倉庫在庫']}個", 
+                    delta="補充が必要", 
+                    delta_color="off"
+                )
 
     if st.button("倉庫管理ページへ移動"):
         st.session_state.page = "warehouse"
