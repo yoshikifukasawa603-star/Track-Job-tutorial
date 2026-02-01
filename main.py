@@ -61,7 +61,7 @@ elif st.session_state.page == "warehouse":
 
     elif warehouse_mode == "新規登録":
         st.subheader("🆕 新規登録")
-        # よしさんの最新フォームをここに統合
+        
         new_item = {}
         col1, col2 = st.columns(2)
         with col1:
