@@ -1,103 +1,124 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
 
-# CSVを読み込む
-df = pd.read_csv("inventory.csv")
+# --- ページ設定（一番最初に書くのがお作法です） ---
+st.set_page_config(page_title="在庫管理システム", layout="wide")
 
-# 1. 準備
-if "page" not in st.session_state:
-    st.session_state.page = "home"
+# データベースの初期設定
+def init_db():
+    conn = sqlite3.connect('inventory_system.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS employees (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
-# 2. ホームページの表示
-if st.session_state.page == "home":
-    st.title("🏠 在庫管理システム")
+init_db()
 
-    # --- 売り場アラート（赤） ---
-    low_stock = df[df["売り場在庫"] < 5]
-    if not low_stock.empty:
-        st.error("🚨 【緊急】売り場への補充が必要です！")
-        st.dataframe(low_stock)
-        
-        st.write("### 補充が必要な商品")
-        cols = st.columns(len(low_stock))
-        for i, (index, row) in enumerate(low_stock.iterrows()):
-            with cols[i]:
-                # st.image を st.metric に修正
-                st.metric(
-                    label=row["商品名"], 
-                    value=f"{row['売り場在庫']}個", 
-                    delta=f"{row['売り場在庫'] - 5}個不足", 
-                    delta_color="inverse"
-                )
+# CSVの読み込み
+try:
+    df = pd.read_csv("inventory.csv")
+except FileNotFoundError:
+    st.error("inventory.csv が見つかりません。")
+    df = pd.DataFrame() # エラー防止用に空の台帳を作る
 
-    # --- 倉庫アラート（黄） ---
-    low_stock_wh = df[df["倉庫在庫"] < 10]
-    if not low_stock_wh.empty:
-        st.warning("⚠️ 【注意】倉庫在庫が少なくなっています。")
-        st.dataframe(low_stock_wh)
-        
-        st.write("### 倉庫の在庫状況（早めの手配を！）")
-        wh_cols = st.columns(len(low_stock_wh)) # 変数名を統一
-        for i, (index, row) in enumerate(low_stock_wh.iterrows()):
-            with wh_cols[i]:
-                st.metric(
-                    label=f"📦 {row['商品名']}", 
-                    value=f"{row['倉庫在庫']}個", 
-                    delta="補充が必要", 
-                    delta_color="off"
-                )
+# --- ログイン・会員登録機能（サイドバー） ---
+st.sidebar.title("🔑 従業員認証")
+menu = ["ログイン", "新規従業員登録"]
+choice = st.sidebar.selectbox("メニューを選択してください", menu)
 
-    if st.button("倉庫管理ページへ移動"):
-        st.session_state.page = "warehouse"
-        st.rerun()
+# ログイン状態の初期化
+if "login_status" not in st.session_state:
+    st.session_state["login_status"] = False
 
-# 3. 在庫管理ページの表示
-elif st.session_state.page == "warehouse":
-    st.title(" 倉庫管理ページ")
+if choice == "ログイン":
+    st.sidebar.subheader("ログイン画面")
+    user = st.sidebar.text_input("従業員ID")
+    pw = st.sidebar.text_input("パスワード", type="password")
+    
+    if st.sidebar.button("ログイン"):
+        conn = sqlite3.connect('inventory_system.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM employees WHERE username=? AND password=?", (user, pw))
+        result = cursor.fetchone()
+        conn.close()
 
-    if st.button(" ホームページへ戻る"):
-        st.session_state.page = "home"
-        st.rerun()
+        if result:
+            st.session_state["login_status"] = True
+            st.sidebar.success(f"ログイン成功！ {user}さん")
+        else:
+            st.sidebar.error("IDまたはパスワードが違います")
+
+elif choice == "新規従業員登録":
+    st.sidebar.subheader("新規登録")
+    new_user = st.sidebar.text_input("登録用ID")
+    new_pw = st.sidebar.text_input("登録用パスワード", type="password")
+    if st.sidebar.button("登録実行"):
+        try:
+            conn = sqlite3.connect('inventory_system.db')
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO employees (username, password) VALUES (?, ?)", (new_user, new_pw))
+            conn.commit()
+            conn.close()
+            st.sidebar.success("登録完了！")
+        except sqlite3.IntegrityError:
+            st.sidebar.error("そのIDは既に使われています")
+
+# --- メインコンテンツ（ログインしている時だけ表示） ---
+if st.session_state["login_status"]:
+    st.title("📦 在庫管理メインパネル")
+
+    if st.button("🗺️ 売り場マップ画面へ移動"):
+        st.switch_page("pages/uriba.py")
 
     st.divider()
 
-    # 操作の選択
-    warehouse_mode = st.radio("操作を選択してください", options=["商品検索", "在庫数更新", "新規登録"], horizontal=True)
+    # 1. 画面切り替えスイッチ
+    if "page" not in st.session_state:
+        st.session_state.page = "home"
 
-    if warehouse_mode == "商品検索":
-        st.subheader(" 商品検索")
-        search_term = st.text_input("商品名を入力してください")
-        if search_term:
-            results = df[df["商品名"].str.contains(search_term, case=False, na=False)]
-            if not results.empty:
-                st.dataframe(results)
-            else:
-                st.info("該当する商品が見つかりませんでした。")
-
-    elif warehouse_mode == "在庫数更新":
-        st.subheader(" 在庫数更新")
-        # 最新の関数 st.data_editor を使います
-        edited_df = st.data_editor(df, use_container_width=True, key="wh_edit")
-        if st.button(" 更新を保存"):
-            edited_df.to_csv("inventory.csv", index=False)
-            st.success("在庫数が更新されました！")
-
-    elif warehouse_mode == "新規登録":
-        st.subheader("🆕 新規登録")
+    # 2. ホーム（アラート表示）
+    if st.session_state.page == "home":
+        st.subheader("🏠 ホーム：在庫アラート")
         
-        new_item = {}
-        col1, col2 = st.columns(2)
-        with col1:
-            new_item["ジャンル"] = st.text_input("ジャンル")
-            new_item["商品名"] = st.text_input("商品名")
-            new_item["場所ID"] = st.text_input("場所ID")
-        with col2:
-            new_item["座標X"] = st.number_input("座標X", min_value=0, step=1)
-            new_item["座標Y"] = st.number_input("座標Y", min_value=0, step=1)
-            new_item["納品予定日"] = st.text_input("納品予定日")
+        # 売り場アラート
+        low_stock = df[df["売り場在庫"] < 5]
+        if not low_stock.empty:
+            st.error("🚨 【緊急】売り場への補充が必要です！")
+            st.dataframe(low_stock)
+            cols = st.columns(len(low_stock))
+            for i, (index, row) in enumerate(low_stock.iterrows()):
+                with cols[i]:
+                    st.metric(label=row["商品名"], value=f"{row['売り場在庫']}個", delta=f"{row['売り場在庫']-5}不足", delta_color="inverse")
 
-        if st.button(" 新規商品を追加"):
-            df = pd.concat([df, pd.DataFrame([new_item])], ignore_index=True)
-            df.to_csv("inventory.csv", index=False)
-            st.success("商品を追加しました！")
+        # 倉庫アラート
+        low_stock_wh = df[df["倉庫在庫"] < 10]
+        if not low_stock_wh.empty:
+            st.warning("⚠️ 【注意】倉庫在庫が少なくなっています。")
+            wh_cols = st.columns(len(low_stock_wh))
+            for i, (index, row) in enumerate(low_stock_wh.iterrows()):
+                with wh_cols[i]:
+                    st.metric(label=f"📦 {row['商品名']}", value=f"{row['倉庫在庫']}個", delta="補充が必要", delta_color="off")
+
+        if st.button("📦 倉庫管理操作ページへ"):
+            st.session_state.page = "warehouse"
             st.rerun()
+
+    # 3. 倉庫管理ページ
+    elif st.session_state.page == "warehouse":
+        st.subheader("🏭 倉庫管理詳細")
+        if st.button("🔙 ホームへ戻る"):
+            st.session_state.page = "home"
+            st.rerun()
+        
+        mode = st.radio("操作を選択", ["商品検索", "在庫数更新", "新規登録"], horizontal=True)
+        # （ここに各モードの処理を書く）
+
+else:
+    st.info("左側のメニューからログインしてください。")
