@@ -17,12 +17,30 @@ if st.session_state.page == "home":
     if not low_stock.empty:
         st.error(" 【緊急】売り場への補充が必要です！")
         st.dataframe(low_stock)
+        st.write("補充が必要な標品一覧")
+        cols = st.columns(len(low_stock))
+        for i,(index, row) in enumerate(low_stock.iterrows()):
+            with cols[i]:
+                st.image(label=row["商品名"], 
+                    value=f"{row['売り場在庫']}個", 
+                    delta=f"{row['売り場在庫'] - 5}個不足", # 5個に対してあと何個足りないか
+                    delta_color="inverse")
 
     # 倉庫アラート
     low_stock_wh = df[df["倉庫在庫"] < 10]
     if not low_stock_wh.empty:
         st.warning("【注意】倉庫在庫が少なくなっています。")
         st.dataframe(low_stock_wh)
+        st.write("### 倉庫の在庫状況（早めの手配を！）")
+        wh_cols = st.columns(len(low_stock_warehouse))
+        for i, (index, row) in enumerate(low_stock_warehouse.iterrows()):
+            with wh_cols[i]:
+                st.metric(
+                    label=f"📦 {row['商品名']}", 
+                    value=f"{row['倉庫在庫']}個", 
+                    delta="補充が必要", 
+                    delta_color="off" # 倉庫は「警告」なので、赤字にせず中立（グレー）にするのも手です
+                )
 
     if st.button("倉庫管理ページへ移動"):
         st.session_state.page = "warehouse"
@@ -61,7 +79,7 @@ elif st.session_state.page == "warehouse":
 
     elif warehouse_mode == "新規登録":
         st.subheader("🆕 新規登録")
-        # よしさんの最新フォームをここに統合
+
         new_item = {}
         col1, col2 = st.columns(2)
         with col1:
