@@ -18,7 +18,7 @@ if not low_stock_warehouse.empty:
     st.warning("⚠️ 【注意】倉庫在庫が少なくなっています。納品を確認してください。") # 黄色で表示
     st.dataframe(low_stock_warehouse)
 
-# 在庫一覧表示 (A-b)
+# 在庫のサイドバー表示 (A-b)
 st.subheader("在庫一覧")
 st.dataframe(df)
 
